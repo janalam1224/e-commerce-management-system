@@ -1,26 +1,26 @@
 {
   "name": "e-commerce-management-system",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "main": "dist/app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/janalam1224/e-commerce-management-system.git"
+    "dev": "nodemon --watch \"src\" --ext ts --exec \"npx ts-node src/app.ts\"",
+    "build": "tsc && npm run copy-config",
+  "copy-config": "mkdir dist\\config && copy  src\\config\\firebase-service-account.json dist\\config\\"
+
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/janalam1224/e-commerce-management-system/issues"
-  },
-  "homepage": "https://github.com/janalam1224/e-commerce-management-system#readme",
+  "description": "",
   "dependencies": {
-    "express": "^5.1.0"
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.4.0",
+    "zod": "^3.24.4"
   },
   "devDependencies": {
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
 }
