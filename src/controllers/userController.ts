@@ -1,74 +1,82 @@
-import { Request, Response, NextFunction } from 'express';
-import { signupSchema, loginSchema } from '../schemas/schemas';
-import usersJson from '../data/user.json';
-import fs from 'fs';
-import path from 'path';
-import { User } from '../types';
+import { Request, Response } from 'express';
 
-const usersPath = path.join(__dirname, '../data/user.json');
-const users: User[] = usersJson;
+interface User {
+  id: number;
+  fullName: string;
+  email: string;
+}
 
-export const postSignup = async (req: Request, res: Response, next: NextFunction) => {
-  const result = signupSchema.safeParse(req.body);
-
-  if (!result.success) {
-    return res.status(400).json({
-      message: "Validation failed",
-      errors: result.error.errors
-    });
+let registeredUser: User[] = [
+  {
+    id: 1,
+    fullName: "janalam",
+    email: "janalam123@gmail.com"
+  },
+  {
+    id: 2,
+    fullName: "kamran",
+    email: "kamran123@gmail.com"
   }
+];
 
-  const { name, email, password, userType } = result.data;
+export const fetchUsers = (req: Request, res: Response): void => {
+  res.status(200).json(registeredUser);
+};
 
-  const userExists = users.find(user => user.email === email);
-  if (userExists) {
-    return res.status(409).json({ message: "User already exists" });
+export const postUser = (req: Request, res: Response): void => {
+  const { fullName, email } = req.body;
+
+  const user = registeredUser.find(user => user.email === email);
+  if (user) {
+  res.status(400).json({ message: "User already exists", user });
+  return;
   }
 
   const newUser: User = {
-    id: users.length + 1,
-    name,
-    email,
-    password,
-    userType
+    id: registeredUser.length + 1,
+    fullName,
+    email
   };
 
-  users.push(newUser);
-
-  fs.writeFile(usersPath, JSON.stringify(users), err => {
-    console.log(err);
-  });
-
-  return res.status(201).json({
-    message: "Signup successful",
-    user: newUser
-  });
+  registeredUser.push(newUser);
+  res.status(201).json({ message: "User added successfully", user: newUser });
 };
 
+export const findUser = (req: Request, res: Response): void => {
+  const userId = parseInt(req.params.id);
+  const user = registeredUser.find(user => user.id === userId);
 
-export const postLogin = async(req: Request, res: Response, next: NextFunction) => {
-  const result = loginSchema.safeParse(req.body);
-
-  if (!result.success) {
-    return res.status(400).json({
-      message: "Validation failed",
-      errors: result.error.errors
-    });
-  }
-
-  const { email, password } = result.data;
-
-  const validUser = users.find(
-    user => user.email === email && user.password === password
-  );
-
-  if (validUser) {
-    return res.status(200).json({
-      message: "Login Successful",
-      token: "mysecrettoken",
-      userType: validUser.userType
-    });
+  if (user) {
+    res.status(200).json(user);
   } else {
-    return res.status(401).json({ message: "Invalid Credentials" });
+    res.status(404).json({ message: "User not found" });
+  }
+};
+
+export const editUser = (req: Request, res: Response): void => {
+  const { fullName, email } = req.body;
+  const userId = parseInt(req.params.id);
+
+  const userIndex = registeredUser.findIndex(user => user.id === userId);
+
+  if (userIndex !== -1) {
+    registeredUser[userIndex].fullName = fullName;
+    registeredUser[userIndex].email = email;
+
+    res.status(200).json({ msg: "User Updated", user: registeredUser[userIndex] });
+  } else {
+    res.status(404).json({ message: "User not found" });
+  }
+};
+
+export const deleteUser = (req: Request, res: Response): void => {
+  const userId = parseInt(req.params.id);
+  const index = registeredUser.findIndex(user => user.id === userId);
+
+  if (index !== -1) {
+    const deletedUser = registeredUser.splice(index, 1);
+    res.status(200).json({ message: "User deleted successfully", user: deletedUser[0] });
+  } else {
+    res.status(404).json({ message: "User not found" });
   }
 };
