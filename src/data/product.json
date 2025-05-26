@@ -1,0 +1,294 @@
+[
+  {
+    "id": 101,
+    "name": "Wireless Headphones",
+    "description": "Noise-cancelling over-ear wireless headphones with 20-hour battery life.",
+    "price": 999.99, 
+    "category": "Electronics",
+    "stock": 150,
+    "rating": 4.5,
+    "image": "https://example.com/images/product101-front.jpg"
+  },
+  {
+    "id": 102,
+    "name": "Bluetooth Speaker",
+    "description": "Compact Bluetooth speaker with deep bass and 10-hour playtime.",
+    "price": 49.99,
+    "category": "Electronics",
+    "stock": 300,
+    "rating": 4.3,
+    "image": "https://example.com/images/product102-front.jpg"
+  },
+  {
+    "id": 103,
+    "name": "Smartphone Stand",
+    "description": "Adjustable aluminum stand for phones and tablets.",
+    "price": 19.99,
+    "category": "Accessories",
+    "stock": 500,
+    "rating": 4.7,
+    "image": "https://example.com/images/product103-front.jpg"
+  },
+  {
+    "id": 104,
+    "name": "Gaming Mouse",
+    "description": "Ergonomic gaming mouse with 6 programmable buttons and RGB lighting.",
+    "price": 59.99,
+    "category": "Gaming",
+    "stock": 200,
+    "rating": 4.6,
+    "image": "https://example.com/images/product104-front.jpg"
+  },
+  {
+    "id": 105,
+    "name": "Mechanical Keyboard",
+    "description": "RGB backlit mechanical keyboard with blue switches.",
+    "price": 89.99,
+    "category": "Computers",
+    "stock": 120,
+    "rating": 4.4,
+    "image": "https://example.com/images/product105-front.jpg"
+  },
+  {
+    "id": 106,
+    "name": "Fitness Tracker",
+    "description": "Waterproof fitness tracker with heart rate and sleep monitor.",
+    "price": 74.99,
+    "category": "Wearables",
+    "stock": 180,
+    "rating": 4.2,
+    "image": "https://example.com/images/product106-front.jpg"
+  },
+  {
+    "id": 107,
+    "name": "Portable Charger",
+    "description": "10000mAh power bank with fast charging capabilities.",
+    "price": 39.99,
+    "category": "Accessories",
+    "stock": 250,
+    "rating": 4.1,
+    "image": "https://example.com/images/product107-front.jpg"
+  },
+  {
+    "id": 108,
+    "name": "Noise-Isolating Earbuds",
+    "description": "Wired earbuds with built-in mic and tangle-free cable.",
+    "price": 24.99,
+    "category": "Electronics",
+    "stock": 350,
+    "rating": 4.0,
+    "image": "https://example.com/images/product108-front.jpg"
+  },
+  {
+    "id": 109,
+    "name": "Smart Home Camera",
+    "description": "1080p indoor security camera with motion detection and night vision.",
+    "price": 69.99,
+    "category": "Smart Home",
+    "stock": 90,
+    "rating": 4.3,
+    "image": "https://example.com/images/product109-front.jpg"
+  },
+  {
+    "id": 110,
+    "name": "USB-C Hub",
+    "description": "7-in-1 USB-C hub with HDMI, USB 3.0, SD card reader and more.",
+    "price": 44.99,
+    "category": "Computers",
+    "stock": 160,
+    "rating": 4.4,
+    "image": "https://example.com/images/product110-front.jpg"
+  },
+    {
+      "id": 111,
+      "name": "4K Action Camera",
+      "description": "Waterproof 4K action camera with wide-angle lens and Wi-Fi support.",
+      "price": 129.99,
+      "category": "Cameras",
+      "stock": 110,
+      "rating": 4.5,
+      "image": "https://example.com/images/product111-front.jpg"
+    },
+    {
+      "id": 112,
+      "name": "LED Desk Lamp",
+      "description": "Dimmable LED desk lamp with touch control and USB charging port.",
+      "price": 34.99,
+      "category": "Home Office",
+      "stock": 240,
+      "rating": 4.3,
+      "image": "https://example.com/images/product112-front.jpg"
+    },
+    {
+      "id": 113,
+      "name": "Laptop Cooling Pad",
+      "description": "Ergonomic cooling pad with dual fans and adjustable height.",
+      "price": 27.99,
+      "category": "Computers",
+      "stock": 180,
+      "rating": 4.2,
+      "image": "https://example.com/images/product113-front.jpg"
+    },
+    {
+      "id": 114,
+      "name": "Wireless Charger",
+      "description": "Fast wireless charging pad compatible with iPhone and Android.",
+      "price": 29.99,
+      "category": "Accessories",
+      "stock": 275,
+      "rating": 4.4,
+      "image": "https://example.com/images/product114-front.jpg"
+    },
+    {
+      "id": 115,
+      "name": "Smart Thermostat",
+      "description": "Wi-Fi enabled smart thermostat with app and voice control.",
+      "price": 159.99,
+      "category": "Smart Home",
+      "stock": 95,
+      "rating": 4.6,
+      "image": "https://example.com/images/product115-front.jpg"
+    },
+    {
+      "id": 116,
+      "name": "Virtual Reality Headset",
+      "description": "Immersive VR headset with adjustable lenses and Bluetooth controller.",
+      "price": 89.99,
+      "category": "Gaming",
+      "stock": 105,
+      "rating": 4.3,
+      "image": "https://example.com/images/product116-front.jpg"
+    },
+    {
+      "id": 117,
+      "name": "Ergonomic Office Chair",
+      "description": "Adjustable mesh chair with lumbar support and armrests.",
+      "price": 199.99,
+      "category": "Furniture",
+      "stock": 80,
+      "rating": 4.5,
+      "image": "https://example.com/images/product117-front.jpg"
+    },
+    {
+      "id": 118,
+      "name": "Noise-Canceling Microphone",
+      "description": "USB condenser microphone with background noise reduction.",
+      "price": 79.99,
+      "category": "Audio",
+      "stock": 135,
+      "rating": 4.6,
+      "image": "https://example.com/images/product118-front.jpg"
+    },
+    {
+      "id": 119,
+      "name": "Smart Light Bulbs",
+      "description": "Color-changing LED bulbs with app control and voice assistant support.",
+      "price": 59.99,
+      "category": "Smart Home",
+      "stock": 210,
+      "rating": 4.2,
+      "image": "https://example.com/images/product119-front.jpg"
+    },
+    {
+      "id": 120,
+      "name": "Electric Toothbrush",
+      "description": "Rechargeable toothbrush with multiple brushing modes and timer.",
+      "price": 49.99,
+      "category": "Personal Care",
+      "stock": 260,
+      "rating": 4.4,
+      "image": "https://example.com/images/product120-front.jpg"
+    },
+      {
+        "id": 121,
+        "name": "Smartwatch Pro",
+        "description": "Premium smartwatch with GPS, heart rate monitor, and voice assistant.",
+        "price": 229.99,
+        "category": "Wearables",
+        "stock": 140,
+        "rating": 4.7,
+        "image": "https://example.com/images/product121-front.jpg"
+      },
+      {
+        "id": 122,
+        "name": "Electric Kettle",
+        "description": "1.7L stainless steel kettle with auto shut-off and boil-dry protection.",
+        "price": 39.99,
+        "category": "Kitchen Appliances",
+        "stock": 300,
+        "rating": 4.3,
+        "image": "https://example.com/images/product122-front.jpg"
+      },
+      {
+        "id": 123,
+        "name": "Robot Vacuum Cleaner",
+        "description": "Smart robot vacuum with app scheduling and multi-surface cleaning.",
+        "price": 249.99,
+        "category": "Home Appliances",
+        "stock": 75,
+        "rating": 4.5,
+        "image": "https://example.com/images/product123-front.jpg"
+      },
+      {
+        "id": 124,
+        "name": "Bluetooth Car Adapter",
+        "description": "Hands-free Bluetooth adapter with dual USB charging ports.",
+        "price": 22.99,
+        "category": "Automotive",
+        "stock": 400,
+        "rating": 4.1,
+        "image": "https://example.com/images/product124-front.jpg"
+      },
+      {
+        "id": 125,
+        "name": "Digital Drawing Tablet",
+        "description": "Graphic tablet with pressure-sensitive pen and customizable keys.",
+        "price": 109.99,
+        "category": "Art & Design",
+        "stock": 130,
+        "rating": 4.6,
+        "image": "https://example.com/images/product125-front.jpg"
+      },
+      {
+        "id": 126,
+        "name": "Noise-Reducing Curtains",
+        "description": "Thermal blackout curtains for better sleep and noise control.",
+        "price": 64.99,
+        "category": "Home Decor",
+        "stock": 220,
+        "rating": 4.3,
+        "image": "https://example.com/images/product126-front.jpg"
+      },
+      {
+        "id": 127,
+        "name": "LED Strip Lights",
+        "description": "Colorful LED strips with remote control and music sync feature.",
+        "price": 29.99,
+        "category": "Lighting",
+        "stock": 350,
+        "rating": 4.4,
+        "image": "https://example.com/images/product127-front.jpg"
+      },
+      {
+        "id": 128,
+        "name": "Streaming Webcam",
+        "description": "Full HD 1080p webcam with built-in mic and adjustable stand.",
+        "price": 59.99,
+        "category": "Computers",
+        "stock": 160,
+        "rating": 4.2,
+        "image": "https://example.com/images/product128-front.jpg"
+      },
+      {
+        "id": 129,
+        "name": "Laptop Sleeve",
+        "description": "Water-resistant neoprene sleeve for 13-15 inch laptops.",
+        "price": 18.99,
+        "category": "Accessories",
+        "stock": 420,
+        "rating": 4.5,
+        "image": "https://example.com/images/product129-front.jpg"
+      }
+    ]
+    
+  
