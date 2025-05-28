@@ -7,7 +7,11 @@ import {
   deleteProduct,
 } from '../controllers/productController';
 
+import { requireAuth, requireRole } from '../middlewares/authMiddleware';
+
 const router = Router();
+
+router.use(requireAuth);
 
 router.route('/')
   .get(getProducts)
@@ -16,6 +20,7 @@ router.route('/')
 router.route('/:id')
   .get(findProduct)
   .put(editProduct)
-  .delete(deleteProduct);
+  .delete(requireRole('admin'), deleteProduct);
 
 export default router;
+

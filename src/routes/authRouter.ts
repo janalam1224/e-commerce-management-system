@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { postLogin, postSignup } from '../controllers/authController';
+import { postLogin, postSignup, googleAuth } from '../controllers/authController';
 import { requireAuth } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -7,6 +7,8 @@ const router = Router();
 router.route('/login').post(postLogin);
 router.route('/signup').post(postSignup);
 
+
+router.post('/auth/google', googleAuth);
 
 router.get('/admin', requireAuth, (req, res) => {
   res.json({ message: "Welcome Admin" });
