@@ -14,3 +14,4 @@ const users: User[] = usersJson;
 export interface AuthenticatedRequest extends Request {
   user?: User;
 }
+
