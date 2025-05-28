@@ -21,3 +21,11 @@ export const createProdSchema = z.object({
   rating: z.number().min(0).max(5).optional(), // Rating is usually 0-5
   image: z.string().url("Image must be a valid URL")
 });
+
+export const createUserSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(5, "Password must be at least 5 characters"),
+  userType: z.enum(["admin", "editor", "user"]),
+});
