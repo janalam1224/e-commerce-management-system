@@ -1,82 +1,52 @@
 import { Request, Response } from 'express';
+import { createProdSchema, createUserSchema } from '../schemas/schemas';
+import {
+  getDocuments,
+  postDocument,
+  findDocument,
+  editDocument,
+  deleteDocument,
+} from './genericController';
 
-interface User {
-  id: number;
-  fullName: string;
-  email: string;
+const COLLECTION_NAME = "users";
+
+export const getUsers = async(req:Request, res:Response) => {
+ try {
+  const users = await getDocuments(req, COLLECTION_NAME);
+  res.status(200).json({ users });
+ } catch (error) {
+  res.status(500).json({ message: "Internal Server Error"});
+ } 
 }
 
-let registeredUser: User[] = [
-  {
-    id: 1,
-    fullName: "janalam",
-    email: "janalam123@gmail.com"
-  },
-  {
-    id: 2,
-    fullName: "kamran",
-    email: "kamran123@gmail.com"
-  }
-];
+export const createUser = async(req:Request, res:Response) => {
 
-export const fetchUsers = (req: Request, res: Response): void => {
-  res.status(200).json(registeredUser);
-};
+const result = await postDocument(req, COLLECTION_NAME, createUserSchema);
+if('error' in result && result.error){
+  res.status(result.status).json({ error:result.error });
+}
+res.status(result.status).json(result);
+}
 
-export const postUser = (req: Request, res: Response): void => {
-  const { fullName, email } = req.body;
-
-  const user = registeredUser.find(user => user.email === email);
-  if (user) {
-  res.status(400).json({ message: "User already exists", user });
-  return;
-  }
-
-  const newUser: User = {
-    id: registeredUser.length + 1,
-    fullName,
-    email
-  };
-
-  registeredUser.push(newUser);
-  res.status(201).json({ message: "User added successfully", user: newUser });
-};
-
-export const findUser = (req: Request, res: Response): void => {
-  const userId = parseInt(req.params.id);
-  const user = registeredUser.find(user => user.id === userId);
-
-  if (user) {
-    res.status(200).json(user);
+export const findUser = async(req:Request, res:Response) => {
+  const { id } = req.params;
+  const result = await findDocument(COLLECTION_NAME, id);
+  
+  if (result.status === 200) {
+    res.status(result.status).json(result.data);
   } else {
-    res.status(404).json({ message: "User not found" });
+    res.status(result.status).json({ message: result.message });
   }
-};
+}
 
-export const editUser = (req: Request, res: Response): void => {
-  const { fullName, email } = req.body;
-  const userId = parseInt(req.params.id);
+export const editUser = async(req:Request, res:Response) => {
+const { id } = req.params;
+const result = await editDocument(COLLECTION_NAME, id, req.body);
+res.status(result.status).json({ message: result.message });
+}
 
-  const userIndex = registeredUser.findIndex(user => user.id === userId);
-
-  if (userIndex !== -1) {
-    registeredUser[userIndex].fullName = fullName;
-    registeredUser[userIndex].email = email;
-
-    res.status(200).json({ msg: "User Updated", user: registeredUser[userIndex] });
-  } else {
-    res.status(404).json({ message: "User not found" });
-  }
-};
-
-export const deleteUser = (req: Request, res: Response): void => {
-  const userId = parseInt(req.params.id);
-  const index = registeredUser.findIndex(user => user.id === userId);
-
-  if (index !== -1) {
-    const deletedUser = registeredUser.splice(index, 1);
-    res.status(200).json({ message: "User deleted successfully", user: deletedUser[0] });
-  } else {
-    res.status(404).json({ message: "User not found" });
-  }
-};
+export const deleteUser = async(req:Request, res:Response) => {
+  const { id } = req.params;
+  const result = await deleteDocument(COLLECTION_NAME, id);
+  res.status(result.status).json({ message: result.message });
+}

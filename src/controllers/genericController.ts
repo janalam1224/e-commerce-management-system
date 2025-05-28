@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { ZodSchema } from 'zod';
-import db from '../config/firebaseAdmin';
+import db from '../firebaseAdmin';
 import { DocumentData,
    PostDocumentResponse,
    FindDocumentResponse,
