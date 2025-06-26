@@ -6,12 +6,13 @@ import {
   editUser,
   deleteUser
 } from '../controllers/userController';
+import { requireAuth } from '../middlewares/authMiddleware';
 
 const router = Router();
 
 router.route('/')
-  .get(getUsers)
-  .post(createUser);
+  .get(requireAuth, getUsers)
+  .post(createUser); // 🔓 Allow unauthenticated user registration for now
 
 router.route('/:id')
   .get(findUser)

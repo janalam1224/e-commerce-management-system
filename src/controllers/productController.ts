@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { createProdSchema } from '../schemas/schemas';
+import { createProductSchema } from '../schemas/schemas';
 import {
   getDocuments,
   postDocument,
@@ -10,6 +10,7 @@ import {
 
 const COLLECTION_NAME = 'products';
 
+// Fetch all products
 export const getProducts = async (req: Request, res: Response) => {
   try {
     const products = await getDocuments(req, COLLECTION_NAME);
@@ -19,8 +20,11 @@ export const getProducts = async (req: Request, res: Response) => {
   }
 };
 
+// Create a new product
 export const createProduct = async (req: Request, res: Response) => {
-  const result = await postDocument(req, COLLECTION_NAME, createProdSchema);
+
+  const result = await postDocument(req, COLLECTION_NAME, createProductSchema);
+  console.log(result);
 
   if ('error' in result && result.error) {
     res.status(result.status).json({ error: result.error });
@@ -30,6 +34,7 @@ export const createProduct = async (req: Request, res: Response) => {
   res.status(result.status).json(result);
 };
 
+// Find a product by ID
 export const findProduct = async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await findDocument(COLLECTION_NAME, id);
@@ -41,12 +46,14 @@ export const findProduct = async (req: Request, res: Response) => {
   }
 };
 
+// Edit an existing product by ID
 export const editProduct = async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await editDocument(COLLECTION_NAME, id, req.body);
   res.status(result.status).json({ message: result.message });
 };
 
+// Delete a product by ID
 export const deleteProduct = async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await deleteDocument(COLLECTION_NAME, id);
