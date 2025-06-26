@@ -1,17 +1,20 @@
-
 import { Request } from 'express';
-import usersJson from '../data/user.json';
-
 export interface User {
-  id: number;
-  name: string;
+  id: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
-  password:string;
-  userType: string;
+  password: string;
+  telephone?: string;
+  gender?: "male" | "female" | "other";
+  role: "admin" | "seller" | "customer";
+  status?: string;
 }
-const users: User[] = usersJson;
-
+export interface JwtPayload {
+  uid: string;
+  email: string;
+  role: "admin" | "seller" | "customer";
+}
 export interface AuthenticatedRequest extends Request {
   user?: User;
 }
-
