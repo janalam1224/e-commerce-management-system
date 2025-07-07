@@ -17,35 +17,27 @@ password: z.coerce.string().trim().min(5, "Password must be at least 5 character
 });
 
 export const createProductSchema = z.object({
-  name: z.string(),
-  slug: z.string(),
-  price: z.number(),
-  discount: z.number().optional(),
-  discountedPrice: z.number().optional(),
-  category: z.string(),
-  categoryId: z.string(),
-  brandId: z.string(),
-  vendorId: z.string(),
-  stock: z.number(),
-  rating: z.number().min(0).max(5),
-  reviewCount: z.number().nonnegative().optional(),
-  description: z.string(),
   images: z.array(z.string().url()),
-  views: z.number().nonnegative().optional(),
-  purchases: z.number().nonnegative().optional(),
-  shippingClass: z.string(),
-  estimatedDeliveryDays: z.number().int().positive(),
-  availableRegions: z.array(z.string()),
-  status: z.enum(["pending", "approved", "rejected"]),
+  name: z.string(),
+  reference: z.string(),
+  barcode: z.number().optional(),
+  discountedPrice: z.number().optional(),
+  cost: z.number(),
+  price: z.number(),
+  salePrice: z.number(),
+  tax: z.number(),
+  stock: z.number(),
+  categoryName:z.string(),
+  status: z.enum(['active', 'inactive']).default('active'),
   createdAt: z.string().datetime(),
+
 });
 
 export const createCategorySchema = z.object({
   name: z.string().trim().min(1, "Category name is required"),
-  slug: z.string().trim().min(1, "Slug is required"),
-  description: z.string().trim().optional(),
+  serviceType: z.enum(["retail", "rental", "repair", "subscription"]),
+  createdAt: z.string().datetime().optional(),
 });
-
 
 export const createAddressSchema = z.object({
   userId: z.string(),

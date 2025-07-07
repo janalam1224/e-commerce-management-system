@@ -1,46 +1,52 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../../config/jwt";
 import { AuthenticatedRequest, JwtPayload } from "../types/auth";
 
-// Auth middleware to verify token and attach user
+// ✅ Middleware to verify JWT and attach user to the request
 export const requireAuth = (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "No token provided" });
+    res.status(401).json({ message: "No token provided" });
+    return;
   }
 
   const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    console.log('JWT_SECRET used:', JWT_SECRET);
-    req.user = {
+
+    // Attach user to the request after casting
+    (req as AuthenticatedRequest).user = {
       id: decoded.uid,
       email: decoded.email,
       role: decoded.role,
-      password: "",
+      password: "", // not needed, but added to match User interface
     };
 
     next();
   } catch (err) {
-    return res.status(403).json({ message: "Invalid or expired token" });
+    res.status(403).json({ message: "Invalid or expired token" });
   }
 };
 
-// Role-based access control middleware
-export const requireRole = (role: "admin" | "seller" | "customer") => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!req.user || req.user.role !== role) {
-      return res
-        .status(403)
-        .json({ message: "Access denied: insufficient permissions" });
+// Middleware to restrict access based on user role
+export const requireRole = (
+  role: "admin" | "seller" | "customer"
+): RequestHandler => {
+  return (req, res, next) => {
+    const user = (req as AuthenticatedRequest).user;
+
+    if (!user || user.role !== role) {
+      res.status(403).json({ message: "Access denied: insufficient permissions" });
+      return;
     }
+
     next();
   };
 };

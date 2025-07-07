@@ -1,3 +1,4 @@
+import type { Request } from 'express';
 
 export interface DocumentData {
   id: string;
@@ -22,8 +23,12 @@ export interface EditDocumentResponse {
   message: string;
 }
 
-
 export interface DeleteDocumentResponse {
   status: number;
   message: string;
+}
+
+export interface MulterRequest extends Request {
+  file: Express.Multer.File;
+  body: { [key: string]: any };
 }

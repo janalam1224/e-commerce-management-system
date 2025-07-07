@@ -23,12 +23,13 @@ export const getUsers = async (req: Request, res: Response) => {
 };
 
 // CREATE new user
-export const createUser = async (req: Request, res: Response) => {
+export const createUser = async (req: Request, res: Response):Promise<void> => {
   try {
     const parsed = unifiedUserSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
+       res.status(400).json({ error: parsed.error.errors });
+       return;
     }
 
     const baseUserData = parsed.data;
@@ -41,7 +42,8 @@ export const createUser = async (req: Request, res: Response) => {
       .get();
 
     if (!existing.empty) {
-      return res.status(409).json({ message: 'User with this email already exists' });
+      res.status(409).json({ message: 'User with this email already exists' });
+      return;
     }
 
     // Hash password
@@ -57,7 +59,8 @@ export const createUser = async (req: Request, res: Response) => {
     const result = await postDocument(userData, COLLECTION_NAME);
 
     if ('error' in result && result.error) {
-      return res.status(result.status).json({ error: result.error });
+      res.status(result.status).json({ error: result.error });
+      return;
     }
 
     res.status(result.status).json(result);
@@ -80,13 +83,14 @@ export const findUser = async (req: Request, res: Response) => {
 };
 
 // EDIT user by ID
-export const editUser = async (req: Request, res: Response) => {
+export const editUser = async (req: Request, res: Response):Promise<void> => {
   const { id } = req.params;
 
   const parsed = unifiedUserSchema.partial().safeParse(req.body);
 
   if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.errors });
+    res.status(400).json({ error: parsed.error.errors });
+    return;
   }
 
   const result = await editDocument(COLLECTION_NAME, id, parsed.data);

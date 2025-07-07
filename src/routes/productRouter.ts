@@ -1,26 +1,22 @@
 import { Router } from 'express';
 import {
   getProducts,
-  createProduct,
   findProduct,
   editProduct,
   deleteProduct,
+  createProduct,
 } from '../controllers/productController';
-
 import { requireAuth, requireRole } from '../middlewares/authMiddleware';
 
 const router = Router();
 
-router.use(requireAuth);
-
 router.route('/')
   .get(getProducts)
-  .post(createProduct);
+  .post(...createProduct); // createProduct is an array of middleware
 
 router.route('/:id')
   .get(findProduct)
   .put(editProduct)
-  .delete(requireRole('admin'), deleteProduct);
+  .delete(deleteProduct);
 
 export default router;
-
