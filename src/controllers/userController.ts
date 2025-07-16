@@ -1,106 +1,152 @@
-import { Request, Response } from 'express';
+import { RequestHandler } from 'express';
+import prisma from '../../config/db.config';
 import bcrypt from 'bcrypt';
-import admin from 'firebase-admin';
 import { unifiedUserSchema } from '../schemas/schemas';
-import {
-  getDocuments,
-  postDocument,
-  findDocument,
-  editDocument,
-  deleteDocument,
-} from './genericController';
+import { ZodError } from 'zod';
 
-const COLLECTION_NAME = "users";
-
-// GET all users
-export const getUsers = async (req: Request, res: Response) => {
+// Fetch all users
+export const fetchUsers: RequestHandler = async (req, res) => {
   try {
-    const users = await getDocuments(req, COLLECTION_NAME);
-    res.status(200).json({ users });
+    const users = await prisma.user.findMany();
+    if (!users.length) {
+      res.status(404).json({ message: "Users Not Found" });
+    } else {
+      res.status(200).json({ users });
+    }
   } catch (error) {
+    console.error("Error Fetching Users:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-// CREATE new user
-export const createUser = async (req: Request, res: Response):Promise<void> => {
+// Create new user
+export const createUser: RequestHandler = async (req, res) => {
   try {
-    const parsed = unifiedUserSchema.safeParse(req.body);
+    const parsedData = unifiedUserSchema.parse(req.body);
 
-    if (!parsed.success) {
-       res.status(400).json({ error: parsed.error.errors });
-       return;
-    }
+    const existingUser = await prisma.user.findUnique({
+      where: { email: parsedData.email },
+    });
 
-    const baseUserData = parsed.data;
-
-    // Check if user already exists
-    const existing = await admin
-      .firestore()
-      .collection(COLLECTION_NAME)
-      .where('email', '==', baseUserData.email.toLowerCase())
-      .get();
-
-    if (!existing.empty) {
-      res.status(409).json({ message: 'User with this email already exists' });
+    if (existingUser) {
+      res.status(422).json({ message: "User already exists" });
       return;
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(baseUserData.password, 10);
+    const hashedPassword = await bcrypt.hash(parsedData.password, 10);
 
-    const userData = {
-      ...baseUserData,
-      password: hashedPassword,
-      fullName: `${baseUserData.firstName || ''} ${baseUserData.lastName || ''}`.trim(),
-      createdAt: new Date(),
-    };
+    await prisma.user.create({
+      data: {
+        ...parsedData,
+        password: hashedPassword,
+      },
+    });
 
-    const result = await postDocument(userData, COLLECTION_NAME);
-
-    if ('error' in result && result.error) {
-      res.status(result.status).json({ error: result.error });
-      return;
+    res.status(201).json({ message: "User Created Successfully" });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ message: "Validation Error", errors: error.errors });
+    } else {
+      console.error("Error Creating User:", error);
+      res.status(500).json({ message: "Internal Server Error" });
     }
-
-    res.status(result.status).json(result);
-  } catch (err: any) {
-    res.status(500).json({ message: 'Failed to create user', error: err.message });
   }
 };
 
-// GET user by ID
-export const findUser = async (req: Request, res: Response) => {
-  const { id } = req.params;
+// Find a single user
+export const findUser: RequestHandler = async (req, res) => {
+  const userId = Number(req.params.id);
 
-  const result = await findDocument(COLLECTION_NAME, id);
-
-  if (result.status === 200) {
-    res.status(200).json(result.data);
-  } else {
-    res.status(result.status).json({ message: result.message });
-  }
-};
-
-// EDIT user by ID
-export const editUser = async (req: Request, res: Response):Promise<void> => {
-  const { id } = req.params;
-
-  const parsed = unifiedUserSchema.partial().safeParse(req.body);
-
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.errors });
+  if (isNaN(userId)) {
+    res.status(400).json({ message: "Invalid user ID" });
     return;
   }
 
-  const result = await editDocument(COLLECTION_NAME, id, parsed.data);
-  res.status(result.status).json({ message: result.message });
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      res.status(404).json({ message: "User Not Found" });
+    } else {
+      res.status(200).json({ user });
+    }
+  } catch (error) {
+    console.error("Error Finding User:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 };
 
-// DELETE user by ID
-export const deleteUser = async (req: Request, res: Response) => {
-  const { id } = req.params;
+// Edit/update a user
+export const editUser: RequestHandler = async (req, res) => {
+  const userId = Number(req.params.id);
 
-  const result = await deleteDocument(COLLECTION_NAME, id);
-  res.status(result.status).json({ message: result.message });
+  if (isNaN(userId)) {
+    res.status(400).json({ message: "Invalid user ID" });
+    return;
+  }
+
+  try {
+    const parsedData = unifiedUserSchema.parse(req.body);
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email: parsedData.email },
+    });
+
+    if (existingUser && existingUser.id !== userId) {
+      res.status(422).json({ message: "Email already in use by another user" });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(parsedData.password, 10);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...parsedData,
+        password: hashedPassword,
+      },
+    });
+
+    res.status(200).json({ message: "User updated successfully" });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ message: "Validation Error", errors: error.errors });
+    } else {
+      console.error("Error Editing User:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
 };
+
+// Delete a user
+export const deleteUser: RequestHandler = async (req, res) => {
+  const userId = Number(req.params.id);
+
+  if (isNaN(userId)) {
+    res.status(400).json({ message: "Invalid user ID" });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const deletedUser = await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    res.status(200).json({ message: "User deleted successfully", user: deletedUser });
+  } catch (error) {
+    console.error("Error Deleting User:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+

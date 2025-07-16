@@ -1,184 +1,253 @@
 import { RequestHandler } from 'express';
-import { db } from '../firebaseAdmin';
-import admin from 'firebase-admin';
-import upload from '../middlewares/upload';
-import {
-  uploadImageToCloudinary,
-  uploadImageToCloudinaryFromUrl,
-  deleteCloudinaryImageByUrl
-} from '../utils/uploadImage';
-import { MulterRequest } from '../types/generic';
+import prisma from '../../config/db.config';
 import { createProductSchema } from '../schemas/schemas';
-import { getDocuments, postDocument } from './genericController';
+import { uploadImageToCloudinary } from '../utils/uploadImage';
+import { deleteImageFromCloudinary } from '../utils/uploadImage';
+import upload from '../middlewares/upload';
 
-const COLLECTION_NAME = 'products';
+// Helper
+const toOptionalNumber = (val: any): number | null => {
+  if (val === null || val === undefined || val === '') return null;
+  const num = Number(val);
+  return isNaN(num) ? null : num;
+};
 
-// Get all products
+// GET Products
 export const getProducts: RequestHandler = async (req, res) => {
   try {
-    const products = await getDocuments(req, COLLECTION_NAME);
-    res.status(200).json({ products });
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const sortField = (req.query.sortField as string) || 'createdAt';
+    const sortOrder = (req.query.sortOrder as string) === 'desc' ? 'desc' : 'asc';
+    const skip = (page - 1) * limit;
+
+    const products = await prisma.product.findMany({
+      skip,
+      take: limit,
+      orderBy: { [sortField]: sortOrder },
+      select: {
+      id: true,
+      name: true,
+      reference: true,
+      barcode: true,
+      discountedPrice: true,
+      cost: true,
+      price: true,
+      salePrice: true,
+      tax: true,
+      stock: true,
+      category: true,
+      status: true,
+      createdAt: true,
+      images: true,
+      },
+    });
+
+    const total = await prisma.product.count();
+
+    res.status(200).json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      products,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Internal Server Error', error });
+    console.error('Error fetching products:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// Create product middleware
-export const createProductMiddleware: RequestHandler = async (req, res): Promise<any> => {
-  const multerReq = req as MulterRequest;
+// Create New product
+export const createProduct: RequestHandler = async (req, res):Promise<any> => {
+  const files = (req.files as Express.Multer.File[]) || [];
+  const uploadedImages: { url: string; public_id: string }[] = [];
 
   try {
-    let imageUrl: string;
-
-    if (multerReq.file) {
-      imageUrl = await uploadImageToCloudinary(multerReq.file);
-    } else if (req.body.imageUrl) {
-      imageUrl = await uploadImageToCloudinaryFromUrl(req.body.imageUrl);
-    } else {
-      return res.status(400).json({ status: 400, message: 'No image uploaded or URL provided' });
+    const parsed = createProductSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors });
     }
 
-    const productData = {
-      images: [imageUrl],
-      name: req.body.name,
-      reference: req.body.reference,
-      barcode: req.body.barcode ? Number(req.body.barcode) : undefined,
-      discountedPrice: req.body.discountedPrice ? Number(req.body.discountedPrice) : undefined,
-      cost: Number(req.body.cost),
-      price: Number(req.body.price),
-      salePrice: Number(req.body.salePrice),
-      tax: Number(req.body.tax),
-      stock: Number(req.body.stock),
-      status: req.body.status || 'active',
-      createdAt: new Date().toISOString(),
-    };
+    const {
+      name,
+      reference,
+      barcode,
+      discountedPrice,
+      cost,
+      price,
+      salePrice,
+      tax,
+      stock,
+      categoryId,
+      status,
+    } = parsed.data;
 
-    const result = await postDocument(productData, COLLECTION_NAME, createProductSchema);
+     const userId = Number(req.user?.id);
 
-    if ('error' in result && result.error) {
-      return res.status(result.status).json({ status: result.status, error: result.error });
+    //Upload images to Cloudinary
+    for (const file of files) {
+      const uploaded = await uploadImageToCloudinary(file.path);
+      if (uploaded?.secure_url && uploaded?.public_id) {
+        uploadedImages.push({ url: uploaded.secure_url, public_id: uploaded.public_id });
+      }
     }
 
-    return res.status(result.status).json(result);
-  } catch (error) {
-    console.error('Error creating product:', error);
-    return res.status(500).json({ status: 500, message: 'Internal server error', error });
+    const imageUrls = uploadedImages.map((img) => img.url);
+
+    const product = await prisma.product.create({
+  data: {
+  name,
+  reference,
+  barcode: barcode ?? null,
+  discountedPrice: discountedPrice ?? null,
+  cost,
+  price,
+  salePrice: salePrice ?? null,
+  tax,
+  stock,
+  categoryId, 
+  userId,
+  status,
+  images: imageUrls,
+}
+});
+
+    return res.status(201).json({ product });
+
+  } catch (err: any) {
+    console.error("Error creating product:", err);
+
+    for (const img of uploadedImages) {
+      try {
+        await deleteImageFromCloudinary(img.public_id);
+        console.log('Cloudinary image deleted:', img.public_id);
+      } catch (delErr) {
+        console.error(`Failed to delete image ${img.public_id}:`, delErr);
+      }
+    }
+
+    return res.status(500).json({ error: "Failed to create product",err });
   }
 };
 
-export const createProduct: RequestHandler[] = [upload.single('image'), createProductMiddleware];
-
-// Find product
-export const findProduct: RequestHandler = async (req, res): Promise<any> => {
-  const { id } = req.params;
-
+// GET Single Product
+export const findProduct: RequestHandler = async (req, res) => {
   try {
-    const doc = await db.collection(COLLECTION_NAME).doc(id).get();
-    if (!doc.exists) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-    return res.status(200).json({ id: doc.id, ...doc.data() });
-  } catch (error) {
-    return res.status(500).json({ message: 'Internal Server Error', error });
-  }
-};
-
-// Edit product
-export const editProduct: RequestHandler[] = [
-  upload.single('image'),
-  async (req, res): Promise<any> => {
     const { id } = req.params;
-    const multerReq = req as MulterRequest;
 
-    try {
-      const productRef = db.collection(COLLECTION_NAME).doc(id);
-      const productSnap = await productRef.get();
+    const product = await prisma.product.findUnique({
+      where: { id: Number(id) },
+    });
 
-      if (!productSnap.exists) {
-        return res.status(404).json({ message: 'Product not found' });
-      }
-
-      const existing = productSnap.data();
-      if (!existing) {
-        return res.status(500).json({ message: 'Product data is empty' });
-      }
-
-      let newImageUrl = existing.images?.[0];
-
-      // ✅ Upload new file image if present
-      if (multerReq.file) {
-        console.log('📦 New file uploaded');
-        if (newImageUrl) await deleteCloudinaryImageByUrl(newImageUrl);
-        newImageUrl = await uploadImageToCloudinary(multerReq.file);
-      }
-
-      // ✅ Or handle new image URL from request body
-      else if (
-        (req.body.images?.[0] && req.body.images[0] !== existing.images?.[0]) ||
-        (req.body.imageUrl && req.body.imageUrl !== existing.images?.[0])
-      ) {
-        console.log('🌐 New image URL provided');
-        if (newImageUrl) await deleteCloudinaryImageByUrl(newImageUrl);
-        const urlToUpload = req.body.images?.[0] || req.body.imageUrl;
-        newImageUrl = await uploadImageToCloudinaryFromUrl(urlToUpload);
-      }
-
-      // ✅ Prepare update data
-      const updatedData: any = {
-        ...existing,
-        ...req.body,
-        images: newImageUrl ? [newImageUrl] : existing.images,
-        updatedAt: new Date().toISOString(),
-      };
-
-      // ✅ Prepare Firestore data (remove imageUrl field explicitly)
-      const firestoreData = {
-        ...updatedData,
-        imageUrl: admin.firestore.FieldValue.delete(), // properly delete in Firestore
-      };
-
-      // ✅ Update Firestore
-      await productRef.update(firestoreData);
-
-      // ✅ Clean up response (remove delete markers)
-      const responseData = { ...updatedData };
-      delete responseData.imageUrl;
-
-      return res.status(200).json({
-        message: 'Product updated successfully',
-        updatedData: responseData,
-      });
-
-    } catch (error) {
-      console.error('❌ Edit product error:', error);
-      return res.status(500).json({ message: 'Internal Server Error', error });
-    }
-  }
-];
-
-// Delete product
-export const deleteProduct: RequestHandler = async (req, res): Promise<any> => {
-  const { id } = req.params;
-
-  try {
-    const docRef = db.collection(COLLECTION_NAME).doc(id);
-    const doc = await docRef.get();
-
-    if (!doc.exists) {
-      return res.status(404).json({ message: 'Product not found' });
+    if (!product) {
+      res.status(404).json({ error: 'Product not found' });
+      return;
     }
 
-    const data = doc.data();
-    const imageUrl = data?.images?.[0];
-
-    await docRef.delete();
-
-    if (imageUrl) {
-      await deleteCloudinaryImageByUrl(imageUrl);
-    }
-
-    return res.status(200).json({ message: 'Product deleted successfully' });
+    res.status(200).json({ product });
   } catch (error) {
-    return res.status(500).json({ message: 'Internal Server Error', error });
+    console.error('Error finding product:', error);
+    res.status(500).json({ error: 'Failed to find product' });
   }
 };
+
+// Edit Product
+export const editProduct: RequestHandler = async (req, res):Promise<any> => {
+     const { id } = req.params;
+  try {
+    const parsed = createProductSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.errors });
+      return;
+    }
+
+    const {
+       name, reference, barcode, discountedPrice, cost, price,
+       salePrice, tax, stock, categoryId, status
+        } = parsed.data;
+
+    const userId = Number(req.user?.id);
+
+    const existingProduct = await prisma.product.findUnique({
+      where:{ id:Number(id)}
+    });
+
+    if(!existingProduct){
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+       if (existingProduct.images && existingProduct.images.length > 0) {
+      for (const imageUrl of existingProduct.images) {
+        const parts = imageUrl.split('/');
+        const filename = parts[parts.length - 1];
+        const publicId = filename.split('.')[0];
+        try {
+          await deleteImageFromCloudinary(publicId);
+        } catch (err) {
+          console.error(`Failed to delete Cloudinary image: ${publicId}`, err);
+        }
+      }
+    }
+
+    const files = (req.files as Express.Multer.File[]) || [];
+    const imageUrls: string[] = [];
+
+    for (const file of files) {
+      const uploaded = await uploadImageToCloudinary(file.path);
+      if (uploaded?.secure_url) {
+        imageUrls.push(uploaded.secure_url);
+      }
+    }
+    
+    const updatedProduct = await prisma.product.update({
+      where: { id: Number(id) },
+      data: {
+      name,
+      reference,
+      barcode:toOptionalNumber(barcode),
+      discountedPrice: toOptionalNumber(discountedPrice),
+      cost: Number(cost),
+      price: Number(price),
+      salePrice: toOptionalNumber(salePrice),
+      tax: Number(tax),
+      stock: Number(stock),
+      categoryId,
+      userId,
+      status,
+        images: imageUrls.length ? imageUrls : undefined,
+      },
+    });
+
+    res.status(200).json({ product: updatedProduct });
+  } catch (error) {
+    console.error('Error editing product:', error);
+    res.status(500).json({ error: 'Failed to edit product' });
+  }
+};
+
+// DELETE Product
+export const deleteProduct: RequestHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+const product = await prisma.product.delete({
+  where: { id: Number(id) },
+});
+
+for (const imageUrl of product.images) {
+  const parts = imageUrl.split('/');
+  const filename = parts[parts.length - 1];
+  const publicId = filename.split('.')[0];
+  try {
+    await deleteImageFromCloudinary(publicId);
+  } catch (err) {
+    console.error(`Failed to delete Cloudinary image: ${publicId}`, err);
+  }
+}
+
+res.status(200).json({ message: 'Product and associated images deleted successfully', product });
+  }catch(error){
+    console.error("Error deleting product:", error);
+    res.status(500).json({ error: "Failed to delete product" });
+  }
+}

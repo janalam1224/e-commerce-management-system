@@ -1,93 +1,123 @@
-import { Request, Response } from 'express';
+import { RequestHandler } from 'express';
 import { createCategorySchema } from '../schemas/schemas';
-import {
-  getDocuments,
-  postDocument,
-  findDocument,
-  editDocument,
-  deleteDocument,
-} from './genericController';
-import { DocumentData, PostDocumentResponse } from '../types';
-import { db } from '../firebaseAdmin';
+import prisma from '../../config/db.config';
+import { number } from 'zod';
 
-const COLLECTION_NAME = 'categories';
-
-export const getCategories = async(req:Request,res:Response):Promise<any> => {
-try {
-  const categories = await getDocuments(req, COLLECTION_NAME);
-  return res.status(200).json({ categories });
-} catch (error) {
-  console.log("Error fetching Categories");
-  res.status(500).json({ message: "Internal Server Error" });
-}
-}
-
-// Create New Category
-export const createCategory = async (
-  req: Request,
-  res: Response
-): Promise<any> => {
+// Get all categories
+export const getCategories: RequestHandler = async (req, res) => {
   try {
-    // ✅ Validate request
-    const parsed = createCategorySchema.safeParse(req.body);
+    const categories = await prisma.category.findMany();
 
-    if (!parsed.success) {
-      return res.status(422).json({ message: "Validation failed", errors: parsed.error.format() });
+    if (!categories.length) {
+      res.status(404).json({ message: "Categories not found" });
     }
 
-    const { name, serviceType } = parsed.data;
+    res.status(200).json({ categories });
+  } catch (error) {
+    console.error("Error Fetching Categories", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+// Create a category
+export const createCategory: RequestHandler = async (req, res) => {
+  const { name, serviceType } = req.body;
 
-    // ✅ Check for existing category
-    const existCat = await db
-      .collection(COLLECTION_NAME)
-      .where('name', '==', name)
-      .limit(1)
-      .get();
-
-    if (!existCat.empty) {
-      return res.status(409).json({ message: "Category already exists" });
-    }
-
-    // ✅ Create category
-    const newCategory = {
-      name,
-      serviceType,
-      createdAt: new Date().toISOString(),
-    };
-
-    const docRef = await db.collection(COLLECTION_NAME).add(newCategory);
-
-    return res.status(201).json({
-      message: "Category created successfully",
-      id: docRef.id,
-      data: newCategory,
+  try {
+    // Optional: prevent duplicates by name + serviceType
+    const existing = await prisma.category.findFirst({
+      where: {
+        name,
+        serviceType,
+      },
     });
 
+    if (existing) {
+      res.status(422).json({ message: "Category already exists" });
+    }
+
+    const newCategory = await prisma.category.create({
+      data: {
+        name,
+        serviceType,
+      },
+    });
+
+    res.status(201).json({ category: newCategory });
   } catch (error) {
-    console.error("Error creating category:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.log("Error Creating Category", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-export const findCategory = async (req:Request, res:Response) => {
-  const { id } = req.params;
-  const result = await findDocument(COLLECTION_NAME, id);
-
-  if (result.status === 200) {
-    res.status(result.status).json(result.data);
-  } else {
-    res.status(result.status).json({ message: result.message });
+// Find single category
+export const findCategory: RequestHandler = async (req, res) => {
+    const categoryId = Number(req.params.id);
+    try {
+       const category = await prisma.category.findUnique({
+        where:{
+          id:categoryId,
+        }
+       });
+       if(!category){
+        res.status(404).json({ message: "category not found" });
+       }
+       res.status(200).json({ category });
+    } catch (error) {
+      console.log("Error Finding Category");
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   }
-};
 
-export const editCategory = async (req:Request, res:Response) => {
-  const { id } = req.params;
-  const result = await editDocument(COLLECTION_NAME, id, req.body);
-  res.status(result.status).json({ message: result.message });
-};
+// Edit/update category
+export const editCategory: RequestHandler = async (req, res) => {
+     const { name, serviceType } = req.body;
+     const categoryId = Number(req.params.id);
+     try {
+       const existing = await prisma.category.findUnique({
+        where:{
+          id:categoryId,
+        }
+       });
+       if(!existing){
+        res.status(404).json({ message:"category not found" });
+       }
+       const updateCategory = await prisma.category.update({
+        where:{
+          id:categoryId,
+        },
+        data:{
+          name,
+          serviceType,
+        }
+       });
+       res.status(201).json({ updateCategory });
+     } catch (error) {
+      console.log("Error Updating Category");
+      res.status(500).json({ message: "Internal Server Error" });
+     }
+    }
 
-export const deleteCategory = async (req:Request, res:Response) => {
-  const { id } = req.params;
-  const result = await deleteDocument(COLLECTION_NAME, id);
-  res.status(result.status).json({ message: result.message });
+// Delete category
+export const deleteCategory: RequestHandler = async (req, res) => {
+  const categoryId = Number(req.params.id);
+  try {
+      const existing = await prisma.category.findUnique({
+    where:{
+      id:categoryId,
+    }
+  });
+  if(!existing){
+    res.status(404).json({ message:"category not found" });
+  }
+  const deleteCategory = await prisma.category.delete({
+    where:{
+      id:categoryId,
+    }
+  });
+
+  res.status(204).json({ message: "category deleted successfully" });
+  } catch (error) {
+   console.log("Error Deleting Category");
+   res.status(500).json({ message:"Internal Server Error" }); 
+  }
 };

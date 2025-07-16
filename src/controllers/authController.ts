@@ -1,241 +1,121 @@
-import { Response } from 'express';
-import { unifiedUserSchema, loginSchema } from '../schemas/schemas';
-import { JWT_SECRET, JWT_EXPIRES_IN } from '../../config/jwt';
-import admin from 'firebase-admin';
+import { RequestHandler } from 'express';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { AuthenticatedRequest, JwtPayload } from '../types';
+import jwt, { SignOptions } from 'jsonwebtoken';
+import prisma from '../../config/db.config';
+import { unifiedUserSchema, loginSchema } from '../schemas/schemas';
+import { ZodError } from 'zod';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../../config/jwt';
+import { JwtPayload } from '../types/auth';
 
-// 🔐 Token generator
-const generateToken = (payload: JwtPayload) => {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
-  });
+const generateToken = (payload: JwtPayload): string => {
+  const options: SignOptions = {
+    expiresIn: JWT_EXPIRES_IN as SignOptions['expiresIn'],
+  };
+
+  return jwt.sign(payload, JWT_SECRET, options);
 };
 
-// 📝 SIGNUP
-export const postSignup = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
-  const result = unifiedUserSchema.safeParse(req.body);
-  if (!result.success) {
-    res.status(400).json({ message: 'Validation failed', errors: result.error.errors });
-    return;
-  }
-
-  const { firstName, lastName, email, password, role, status, telephone } = result.data;
-
+// Signup
+export const signUp: RequestHandler = async (req, res) => {
   try {
-    const userSnap = await admin.firestore()
-      .collection('users')
-      .where('email', '==', email.toLowerCase())
-      .get();
+    const parsedData = unifiedUserSchema.parse(req.body);
 
-    if (!userSnap.empty) {
-      res.status(409).json({ message: 'User already exists' });
+    const existingUser = await prisma.user.findUnique({
+      where: { email: parsedData.email },
+    });
+
+    if (existingUser) {
+      res.status(422).json({ message: 'User already exists' });
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUserRef = admin.firestore().collection('users').doc();
+    const hashedPassword = await bcrypt.hash(parsedData.password, 12);
 
-    const newUser = {
-      uid: newUserRef.id,
-      fullName: `${firstName || ''} ${lastName || ''}`.trim(),
-      email,
-      password: hashedPassword,
-      role,
-      status: status || 'active',
-      telephone,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-
-    await newUserRef.set(newUser);
-
-    const token = generateToken({ uid: newUser.uid, email, role });
+    const newUser = await prisma.user.create({
+      data: {
+        ...parsedData,
+        password: hashedPassword,
+      },
+    });
 
     res.status(201).json({
-      message: 'Signup successful',
-      token,
-      user: { uid: newUser.uid, email, fullName: newUser.fullName, role },
+      message: 'User registered successfully',
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        role: newUser.role,
+      },
     });
-  } catch (err: any) {
-    res.status(500).json({ message: 'Signup failed', error: err.message });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ message: 'Validation error', errors: error.errors });
+    } else {
+      console.error('Signup Error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
   }
 };
 
-// 🔑 LOGIN
-export const postLogin = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
-  const result = loginSchema.safeParse(req.body);
-  if (!result.success) {
-    res.status(400).json({ message: 'Validation failed', errors: result.error.errors });
-    return;
-  }
-
-  const { email: emailInRequest, password } = req.body;
-
+// Login
+export const logIn: RequestHandler = async (req, res) => {
   try {
-    const snapshot = await admin.firestore()
-      .collection('users')
-      .where('email', '==', emailInRequest)
-      .get();
+    const { email, password } = loginSchema.parse(req.body);
 
-    if (snapshot.empty) {
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
       res.status(401).json({ message: 'Invalid email or password' });
       return;
     }
 
-    const userDoc: any = snapshot.docs[0];
-    const { password: userPasswordInDB, id, email, role } = userDoc.data();
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
-    const passwordMatch = await bcrypt.compare(password, userPasswordInDB);
-    if (!passwordMatch) {
+    if (!isPasswordValid) {
       res.status(401).json({ message: 'Invalid email or password' });
       return;
     }
 
-    const token = generateToken({ uid: id, email, role });
+    const payload: JwtPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
 
-    res.status(200).json({ token });
-  } catch (err: any) {
-    res.status(500).json({ message: 'Login failed', error: err.message });
-  }
-};
-
-// 🔓 GOOGLE AUTH
-export const googleAuth = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ message: 'No token provided' });
-    return;
-  }
-
-  const idToken = authHeader.split(' ')[1];
-
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { uid, name, email, picture } = decodedToken;
-
-    const userRef = admin.firestore().collection('users').doc(uid);
-    const doc = await userRef.get();
-
-    if (!doc.exists) {
-      await userRef.set({
-        fullName: name || '',
-        email,
-        role: 'customer',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        provider: 'google',
-        picture,
-      });
-    }
+    const token = generateToken(payload);
 
     res.status(200).json({
       message: 'Login successful',
-      user: { uid, fullName: name || '', email, picture },
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
     });
   } catch (error) {
-    console.error('Google Auth error:', error);
-    res.status(401).json({ message: 'Invalid or expired token' });
-  }
-};
-
-// 🔄 RESET PASSWORD EMAIL
-export const resetPassword = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
-  const { email } = req.body;
-  if (!email) {
-    res.status(400).json({ message: 'Email is required' });
-    return;
-  }
-
-  try {
-    const firebaseRes = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${process.env.FIREBASE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requestType: 'PASSWORD_RESET',
-          email,
-          continueUrl: 'http://localhost:3000/auth/reset-password',
-        }),
-      }
-    );
-
-    const data = await firebaseRes.json() as 
-    { error?: { message?: string } };
-
-    if (!firebaseRes.ok) {
-      res.status(400).json({ message: data.error?.message || 'Failed to send reset email' });
-      return;
+    if (error instanceof ZodError) {
+      res.status(400).json({ message: 'Validation error', errors: error.errors });
+    } else {
+      console.error('Login Error:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
-
-    res.status(200).json({ message: 'Password reset email sent successfully' });
-  } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(500).json({ message: 'Failed to send password reset email' });
   }
 };
 
-// ✅ VALIDATE RESET LINK
-export const getSetPassword = (
-  req: AuthenticatedRequest,
-  res: Response
-): void => {
-  const { oobCode, mode } = req.query;
 
-  if (mode !== 'resetPassword' || !oobCode) {
-    res.status(400).send('Invalid password reset link.');
-    return;
-  }
-
-  res.status(200).send('Reset link verified. You may now reset your password.');
+// Stubs for unimplemented
+export const googleAuth: RequestHandler = async (_req, res) => {
+  res.status(501).json({ message: 'Google Auth not implemented' });
 };
 
-// 🔁 SET NEW PASSWORD
-export const postSetPassword = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
-  const { oobCode, newPassword } = req.body;
+export const resetPassword: RequestHandler = async (_req, res) => {
+  res.status(501).json({ message: 'Reset Password not implemented' });
+};
 
-  if (!oobCode || !newPassword) {
-    res.status(400).send('Missing reset code or new password.');
-    return;
-  }
+export const getSetPassword: RequestHandler = async (_req, res) => {
+  res.status(501).json({ message: 'Set Password Page not implemented' });
+};
 
-  try {
-    const firebaseRes = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=${process.env.FIREBASE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oobCode, newPassword }),
-      }
-    );
-
-  const data = await firebaseRes.json() as 
-  { error?: { message?: string } };
-
-    if (!firebaseRes.ok) {
-      res.status(400).send(`Error: ${data.error?.message || 'Password reset failed'}`);
-      return;
-    }
-
-    res.send('Your password has been successfully reset.');
-  } catch (error) {
-    console.error('Password reset confirmation error:', error);
-    res.status(500).send('Internal server error.');
-  }
+export const postSetPassword: RequestHandler = async (_req, res) => {
+  res.status(501).json({ message: 'Post Set Password not implemented' });
 };
