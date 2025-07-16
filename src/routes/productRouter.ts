@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import upload from '../middlewares/upload';
 import {
   getProducts,
   findProduct,
@@ -6,17 +7,26 @@ import {
   deleteProduct,
   createProduct,
 } from '../controllers/productController';
-import { requireAuth, requireRole } from '../middlewares/authMiddleware';
+
+import { requireAuth } from '../middlewares/authMiddleware'; // ✅ import it
 
 const router = Router();
 
 router.route('/')
-  .get(getProducts)
-  .post(...createProduct); // createProduct is an array of middleware
+  .get(requireAuth, getProducts) // ✅ protect as needed
+  .post(
+    requireAuth,                // ✅ protect route
+    upload.array('images', 5),
+    createProduct
+  );
 
 router.route('/:id')
-  .get(findProduct)
-  .put(editProduct)
-  .delete(deleteProduct);
+  .get(requireAuth, findProduct) // ✅ protect as needed
+  .put(
+    requireAuth,
+    upload.array('images', 5),
+    editProduct
+  )
+  .delete(requireAuth, deleteProduct); // ✅
 
 export default router;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  getUsers,
+  fetchUsers,
   createUser,
   findUser,
   editUser,
@@ -11,8 +11,8 @@ import { requireAuth } from '../middlewares/authMiddleware';
 const router = Router();
 
 router.route('/')
-  .get(requireAuth, getUsers)
-  .post(createUser); // 🔓 Allow unauthenticated user registration for now
+  .get(requireAuth, fetchUsers)
+  .post(createUser);
 
 router.route('/:id')
   .get(findUser)
