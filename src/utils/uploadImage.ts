@@ -1,64 +1,40 @@
 import { v2 as cloudinary } from 'cloudinary';
-import streamifier from 'streamifier';
-import path from 'path';
+import fs from 'fs';
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
   api_key: process.env.CLOUDINARY_API_KEY!,
   api_secret: process.env.CLOUDINARY_API_SECRET!,
 });
 
-// Upload local image (from multer)
-export const uploadImageToCloudinary = (file: Express.Multer.File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      { folder: 'products' },
-      (error, result) => {
-        if (error || !result) return reject(error);
-        resolve(result.secure_url);
-      }
-    );
-
-    streamifier.createReadStream(file.buffer).pipe(uploadStream);
-  });
-};
-
-// Upload image from URL
-export const uploadImageToCloudinaryFromUrl = (imageUrl: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload(
-      imageUrl,
-      { folder: 'products' },
-      (error, result) => {
-        if (error || !result) {
-          console.error('Cloudinary URL upload error:', error); // 🪵 Add this line
-          return reject(error);
-        }
-        resolve(result.secure_url);
-      }
-    );
-  });
-};
-
-// Delete image from Cloudinary using URL
-export const deleteCloudinaryImageByUrl = async (url: string): Promise<void> => {
+export const uploadImageToCloudinary = async (localFilePath: string) => {
   try {
-    const parsed = new URL(url);
-    const parts = parsed.pathname.split('/'); // e.g., [..., 'products', 'abc123.jpg']
-    const versionIndex = parts.findIndex(p => /^v\d+$/.test(p));
-    if (versionIndex === -1 || versionIndex + 1 >= parts.length) {
-      console.warn('⚠️ Could not find version index in URL:', url);
-      return;
-    }
+    if (!localFilePath) return null;
 
-    const publicIdParts = parts.slice(versionIndex + 1); // e.g., ['products', 'abc123.jpg']
-    const fullPath = publicIdParts.join('/');
-    const publicId = fullPath.replace(path.extname(fullPath), '');
+    const response = await cloudinary.uploader.upload(localFilePath, {
+      resource_type: 'auto',
+    });
 
-    console.log('🧹 Attempting to delete Cloudinary public_id:', publicId);
+    console.log('File uploaded to Cloudinary:', response.url);
 
+    fs.unlinkSync(localFilePath);
+
+    return response;
+  } catch (error) {
+    console.error('Cloudinary upload error:', error);
+      fs.unlinkSync(localFilePath);
+
+    return null;
+  }
+};
+
+export const deleteImageFromCloudinary = async (publicId: string) => {
+  try {
     const result = await cloudinary.uploader.destroy(publicId);
-    console.log('✅ Deletion result:', result);
-  } catch (err) {
-    console.error('❌ Error deleting Cloudinary image:', err);
+    console.log('Cloudinary image deleted:', publicId);
+    return result;
+  } catch (error) {
+    console.error('Failed to delete Cloudinary image:', error);
+    throw error;
   }
 };
