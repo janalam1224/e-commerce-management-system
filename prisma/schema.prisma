@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  firstName String?
+  lastName  String?
+  email     String    @unique
+  telephone String?
+  gender    Gender?
+  role      Role
+  password  String
+  status    String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum Role {
+  admin
+  seller
+  customer
+}
+
+model Product {
+  id              Int      @id @default(autoincrement())
+  images          String[]
+  name            String
+  reference       String
+  barcode         Int?
+  discountedPrice Float?
+  cost            Float?
+  price           Float?
+  salePrice       Float?
+  tax             Int
+  stock           Int
+  status          Status   @default(active)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+}
+
+enum Status {
+  active
+  inactive
+}
+
+model Category {
+  id          Int         @id @default(autoincrement())
+  name        String
+  serviceType ServiceType
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  products Product[]
+}
+
+enum ServiceType {
+  retail
+  rental
+  repair
+  subscription
+}
