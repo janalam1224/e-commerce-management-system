@@ -6,6 +6,7 @@ import authRouter from './routes/authRouter';
 import userRouter from './routes/userRouter';
 import productRouter from './routes/productRouter';
 import categoryRouter from './routes/categoryRouter';
+import orderRouter from './routes/orderRouter';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use('/auth', authRouter);
 app.use('/api/users', userRouter);
 app.use('/api/products', productRouter);
 app.use('/api/categories', categoryRouter);
+app.use('/api/orders', orderRouter);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
