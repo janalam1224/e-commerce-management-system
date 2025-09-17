@@ -5,10 +5,11 @@ import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../../config/jwt";
 import { JwtPayload } from "../types/auth";
 import prisma from "../../config/db.config";
-
+import { CustomizeRequest, CustomizeRequestHandler } from "../types/user";
+import { any } from "zod";
 // Middleware to verify JWT and attach user to request
 export const requireAuth = async (
-  req: Request,
+  req: CustomizeRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -46,16 +47,16 @@ export const requireAuth = async (
   }
 };
 
-// Middleware to enforce role-based access
-// export const requireRole = (
-//   role: 'admin' | 'seller' | 'customer'
-// ): RequestHandler => {
-//   return (req, res, next): void => {
-//     if (!req.user || req.user.role !== role) {
-//       res.status(403).json({ message: 'Access denied: insufficient permissions' });
-//       return;
-//     }
-
-//     next();
-//   };
-// };
+export const requireRole = (
+  ...roles: Array<"admin" | "manager" | "staff">
+): any => {
+  return (req: CustomizeRequest, res: Response, next: NextFunction): void => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      res
+        .status(403)
+        .json({ message: "Access denied: insufficient permissions" });
+      return;
+    }
+    next();
+  };
+};
