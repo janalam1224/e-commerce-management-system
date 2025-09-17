@@ -7,19 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int       @id @default(autoincrement())
-  firstName String?
-  lastName  String?
-  email     String    @unique
-  telephone String?
-  gender    Gender?
-  role      Role
-  password  String
-  status    String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  products  Product[]
+enum userStatus {
+  active
+  inactive
 }
 
 enum Gender {
@@ -30,22 +20,45 @@ enum Gender {
 
 enum Role {
   admin
-  seller
-  customer
+  manager
+  staff
+}
+
+model User {
+  id        Int        @id @default(autoincrement())
+  firstName String?
+  lastName  String?
+  email     String     @unique
+  telephone String?
+  gender    Gender?
+  role      Role       @default(staff)
+  password  String
+  status    userStatus @default(active)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  products     Product[]
+  orders       Order[]
+  transactions Transaction[]
+}
+
+enum Status {
+  active
+  inactive
 }
 
 model Product {
   id              Int      @id @default(autoincrement())
-  images          String[]
+  image           String?
   name            String
-  reference       String
-  barcode         Int?
+  reference       String   @unique
+  barcode         String?  @unique
   discountedPrice Float?
-  cost            Float?
-  price           Float?
+  cost            Float
+  price           Float
   salePrice       Float?
   tax             Int
-  stock           Int
+  stock           Int      @default(0)
   status          Status   @default(active)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -55,26 +68,62 @@ model Product {
 
   categoryId Int
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-}
 
-enum Status {
-  active
-  inactive
+  orderItems OrderItem[]
 }
 
 model Category {
-  id          Int         @id @default(autoincrement())
-  name        String
-  serviceType ServiceType
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   products Product[]
 }
 
-enum ServiceType {
-  retail
-  rental
-  repair
-  subscription
+model Order {
+  id          Int      @id @default(autoincrement())
+  orderNumber String   @unique
+  totalAmount Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items        OrderItem[]
+  transactions Transaction[]
+}
+
+model OrderItem {
+  id       Int   @id @default(autoincrement())
+  quantity Int
+  price    Float
+
+  orderId Int
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentMethod {
+  cash
+}
+
+model Transaction {
+  id            Int           @id @default(autoincrement())
+  transactionId String        @unique
+  paymentMethod PaymentMethod @default(cash)
+  amount        Float
+  discount      Float?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now()) @updatedAt
+
+  //relation to user
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  Int
+  //relation to order
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId Int
 }
