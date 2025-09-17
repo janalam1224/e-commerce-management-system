@@ -1,6 +1,6 @@
 // types/product.ts
 export interface IProduct {
-  images: string[]; // URLs
+  image: string; // URLs
   name: string;
   reference: string;
   barcode?: number;
@@ -11,6 +11,6 @@ export interface IProduct {
   tax: number;
   stock: number;
   categoryName: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
   createdAt: string; // ISO Date string
 }
