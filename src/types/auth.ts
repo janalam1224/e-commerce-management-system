@@ -1,28 +1,38 @@
-import { Request } from 'express';
-import { JwtPayload as DefaultJwtPayload } from 'jsonwebtoken';
-import { User } from '@prisma/client';
+import { Request } from "express";
+import { JwtPayload as DefaultJwtPayload } from "jsonwebtoken";
+import { User } from "@prisma/client";
 
+/**
+ * Extend Express Request to include optional `user`
+ * populated by authentication middleware
+ */
 declare global {
   namespace Express {
+    interface User {
+      id: number;
+      email: string;
+      role: Role;
+    }
+
     interface Request {
-      user?: Pick<User, 'id' | 'email' | 'role'>;
+      user?: User;
     }
   }
 }
 
-// Used with jwt.verify
+/**
+ * JWT payload interface used with `jwt.verify`
+ */
 export interface JwtPayload extends DefaultJwtPayload {
   id: number;
   email: string;
-  role: 'admin' | 'seller' | 'customer';
+  role: Role;
 }
 
-// ✅ Add this type if you want a typed Request with guaranteed user
+/**
+ * Request type for authenticated routes
+ * Guarantees `req.user` exists
+ */
 export interface AuthenticatedRequest extends Request {
-  user: {
-    id: number;
-    email: string;
-    role: 'admin' | 'seller' | 'customer';
-    password:string
-  };
+  user: Pick<User, "id" | "email" | "password">;
 }
